@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Digital Literacy Helper",
-  "version": "1.0.0",
+  "version": "{EXT_VERSION}",
   "description": "Digital literacy teaching tool for senior citizens",
   "action": {
     "default_title": "Digital Literacy Helper",
@@ -28,3 +28,4 @@
   },
   "homepage_url": "https://github.com/parker-rho/old-people"
 }
+

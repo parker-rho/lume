@@ -4,6 +4,8 @@
   let storageData = {
     uiTheme: 'light',
   };
+  
+  let apiKey = '';
 
   function detectColorScheme(){
     let theme="light";
@@ -25,9 +27,12 @@
   }
 
   function loadData() {
-    chrome.storage.local.get('storageData', (data) => {
+    chrome.storage.local.get(['storageData', 'apiKey'], (data) => {
       if (Object.keys(data).length > 0 && data.storageData) {
         storageData = data.storageData;
+      }
+      if (data.apiKey) {
+        apiKey = data.apiKey;
       }
       detectColorScheme();
       populateForms();
@@ -42,13 +47,20 @@
 
   function saveForm() {
     storageData.uiTheme = $('ui_theme').value;
-    saveData('status_save');
+    apiKey = $('api_key').value;
+    
+    // Save both storageData and apiKey
+    chrome.storage.local.set({ storageData, apiKey }, () => {
+      setLabel('status_save', 'Options Saved');
+    });
+    
     detectColorScheme();
     $('save_btn').classList.add('disabled-btn');
   }
 
   function populateForms() {
     $('ui_theme').value = storageData.uiTheme || 'light';
+    $('api_key').value = apiKey || '';
     $('save_btn').classList.add('disabled-btn');
   }
 

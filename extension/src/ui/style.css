@@ -202,6 +202,30 @@ fieldset input:focus {
   border-bottom: 2px solid var(--white);
 }
 
+/* Text input - wide version */
+.text-input {
+  width: 100%;
+  max-width: 500px;
+  padding: .5em !important;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+/* Help text */
+.help-text {
+  margin-top: .5em;
+  font-size: 0.875rem;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+.help-text a {
+  color: #06c;
+  text-decoration: underline;
+}
+.help-text a:hover {
+  color: #0099ff;
+}
+
 /* select button */
 .select {
   background-color: var(--btn-bg);

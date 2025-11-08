@@ -13,7 +13,21 @@
     <div id="main">
       <form id="options">
         <legend>Settings</legend>
+        
         <fieldset>
+          <h3>Speech-to-Text Configuration</h3>
+          <div>
+            <label class="block-label" for="api_key">OpenAI API Key</label>
+            <input type="password" id="api_key" class="text-input" placeholder="sk-..." />
+            <p class="help-text">
+              Required for speech-to-text. Get your API key from 
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI Platform</a>
+            </p>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <h3>Appearance</h3>
           <div>
             <label class="block-label" for="ui_theme">UI Theme</label>
             <select id="ui_theme" class="select">
@@ -22,6 +36,7 @@
             </select>
           </div>
         </fieldset>
+        
         <div class="buttons sticky">
           <input type="button" class="disabled-btn" id="save_btn" value="✔ Save" />
           <div class="flex-break"></div>
