@@ -1,0 +1,5 @@
+dist/
+old_people.zip
+.env
+__pycache__/
+.DS_Store
