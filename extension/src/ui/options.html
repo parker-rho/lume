@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="style.css" rel="stylesheet" type="text/css">
+    <title>Digital Literacy Helper - Options</title>
+  </head>
+  <body>
+    <div id="header">
+      <h1 id="header-text">Digital Literacy Helper</h1>
+    </div>
+    <div id="main">
+      <form id="options">
+        <legend>Settings</legend>
+        <fieldset>
+          <div>
+            <label class="block-label" for="ui_theme">UI Theme</label>
+            <select id="ui_theme" class="select">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </fieldset>
+        <div class="buttons sticky">
+          <input type="button" class="disabled-btn" id="save_btn" value="✔ Save" />
+          <div class="flex-break"></div>
+          <div id="status_save" class="alert"></div>
+        </div>
+      </form>
+    </div>
+
+    <script type="text/javascript" src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Digital Literacy Helper",
+  "version": "1.0.0",
+  "description": "Digital literacy teaching tool for senior citizens",
+  "action": {
+    "default_title": "Digital Literacy Helper",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/16.png",
+      "48": "assets/icons/48.png",
+      "128": "assets/icons/128.png"
+    }
+  },
+  "options_ui": {
+    "page": "src/ui/options.html",
+    "open_in_tab": true
+  },
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "src/scripts/background.js"
+  },
+  "icons": {
+    "16": "assets/icons/16.png",
+    "48": "assets/icons/48.png",
+    "128": "assets/icons/128.png"
+  },
+  "homepage_url": "https://github.com/parker-rho/old-people"
+}
