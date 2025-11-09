@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import asyncio
 import os
 import requests
+import asyncio
 from dotenv import load_dotenv
 from make_instructions import make_instructions
 from select_elements import process_instructions_step_by_step, process_all_steps, get_selected_elements_history
@@ -13,10 +13,6 @@ load_dotenv(dotenv_path='../.env')
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"]}}, supports_credentials=False)
-
-# Create or reuse a global event loop
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
 
 
 @app.post("/text-to-speech")
@@ -152,9 +148,9 @@ def run_instructions():
         context = data["context"]
         print(type(context))
 
-        # Run the async task synchronously
+        # Run the async task (creates new event loop for each request, avoiding race conditions)
         try:
-            result = loop.run_until_complete(make_instructions(prompt, context))
+            result = asyncio.run(make_instructions(prompt, context))
         except Exception as async_err:
             return jsonify({
                 "status": "error",
@@ -194,10 +190,8 @@ def select_element():
         step_index = data.get("step_index", 0)
         instructions_file = data.get("instructions_file", "dedalus.json")
         
-        # Run the async element selection
-        result = loop.run_until_complete(
-            process_instructions_step_by_step(instructions_file, annotated_html, step_index)
-        )
+        # Run the async element selection (creates new event loop for each request)
+        result = asyncio.run(process_instructions_step_by_step(instructions_file, annotated_html, step_index))
         
         return jsonify({"status": "success", "result": result}), 200
         
@@ -228,10 +222,8 @@ def select_all_elements():
         annotated_html = data["annotated_html"]
         instructions_file = data.get("instructions_file", "dedalus.json")
         
-        # Run the async processing for all steps
-        results = loop.run_until_complete(
-            process_all_steps(instructions_file, annotated_html)
-        )
+        # Run the async processing for all steps (creates new event loop for each request)
+        results = asyncio.run(process_all_steps(instructions_file, annotated_html))
         
         return jsonify({"status": "success", "results": results}), 200
         
