@@ -8,11 +8,11 @@ from make_instructions import make_instructions
 from select_elements import process_instructions_step_by_step, process_all_steps, get_selected_elements_history
 import json
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from parent directory
+load_dotenv(dotenv_path='../.env')
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"]}}, supports_credentials=False)
 
 # Create or reuse a global event loop
 loop = asyncio.new_event_loop()

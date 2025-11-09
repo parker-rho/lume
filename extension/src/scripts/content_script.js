@@ -51,70 +51,13 @@
       </button>
     `;
 
-    // Inject popup CSS
-    const styleLink = document.createElement('link');
-    styleLink.rel = 'stylesheet';
-    styleLink.href = chrome.runtime.getURL('src/popup/popup.css');
-    document.head.appendChild(styleLink);
-
     // Inject widget into page
+    // Note: popup.css is loaded automatically via manifest.json
     document.body.appendChild(widgetContainer);
 
-    // Load popup scripts into page context (must be in page context for getUserMedia to work)
-    // We need to inject scripts that run in page context, not content script context
-    // Note: speech-service.js needs chrome APIs, so we need to load it in content script context
-    // and bridge the communication, OR load it in page context but bridge chrome API calls
-    // For now, we'll load it in content script context and inject a bridge
-    const scripts = [
-      chrome.runtime.getURL('src/scripts/speech-service.js'),
-      chrome.runtime.getURL('src/popup/waveform.js'),
-      chrome.runtime.getURL('src/popup/popup.js')
-    ];
-
-    // Function to load a script in page context using a message event
-    // This avoids CSP violations from inline scripts
-    function injectScriptIntoPage(src) {
-      return new Promise((resolve, reject) => {
-        // Check if script already loaded
-        if (document.querySelector(`script[data-extension-script="${src}"]`)) {
-          resolve();
-          return;
-        }
-
-        // Create script element with src (not inline) to avoid CSP violation
-        const script = document.createElement('script');
-        script.src = src;
-        script.setAttribute('data-extension-script', src);
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-
-        // Append to page (runs in page context, not content script context)
-        (document.head || document.documentElement).appendChild(script);
-      });
-    }
-
-    // Load scripts sequentially to ensure proper order
-    async function loadScripts() {
-      try {
-        for (const src of scripts) {
-          await injectScriptIntoPage(src);
-        }
-        // popup.js will auto-initialize when it loads
-        // It has its own DOMContentLoaded listener that checks for voice-button
-
-        // Note: Test function will be set up by popup.js in page context
-        // Users can also call: window.popupController.addChatMessage("test", "user")
-      } catch (error) {
-      }
-    }
-
-    // Load scripts when DOM is ready
-    // Note: Scripts run in page context, so they'll have access to the button we just created
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', loadScripts);
-    } else {
-      loadScripts();
-    }
+    // Note: speech-service.js, waveform.js, and popup.js are loaded as content scripts
+    // via manifest.json, so they run with extension permissions (no CSP issues, proper mic access)
+    // popup.js will auto-initialize when it detects the voice-button element
   }
 
   injectWhenReady();

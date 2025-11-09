@@ -25,6 +25,15 @@ class PopupController {
     this.speechService = null;
     this.waveformVisualizer = null;
     this.conversationHistory = [];
+    
+    // Agent 2 step tracking
+    this.currentStepIndex = 0;
+    this.totalSteps = 0;
+    this.isProcessingSteps = false;
+    this.currentSelectedElement = null;
+    this.clickTimeout = null;
+    this.lastUserTranscript = null; // Store user's original question
+    this.CLICK_TIMEOUT_DURATION = 30000; // 30 seconds before showing reminder (repeats until clicked)
 
     this.init();
   }
@@ -364,24 +373,8 @@ class PopupController {
 
       const transcription = await result.transcription;
 
-      console.log("hello");
-      console.log(transcription);
-
-      // TOOD: BUG HERE
-      if (transcription && transcription.text) {
-        chrome.runtime.sendMessage({
-          type: 'PROCESS_USER_MESSAGE',
-          payload: { text: transcription.text }
-        }, (response) => {
-          if (response && response.status === 'success') {
-            // Handle the agent's response
-            // Call new function in background
-          } else {
-            // Handle error
-            alert(response?.payload || 'An error occurred while processing your request.');
-          }
-        });
-      }
+      // Note: Transcription is handled by onTranscription callback (see line 51-59)
+      // No need for additional processing here
 
       // Get the analyser from SpeechService and share it with waveform visualizer
       // This avoids requesting microphone access twice
@@ -545,9 +538,235 @@ class PopupController {
   }
 
   async getAgentResponse(userMessage) {
-    // TODO: Replace with actual agent API call
-    // For now, return a mock response
-    return `I understand you said: "${userMessage}". This is a placeholder response. Integrate your agent API here.`;
+    // Store the user's message for potential re-run
+    this.lastUserTranscript = userMessage;
+    
+    // Reset step tracking for new conversation
+    this.currentStepIndex = 0;
+    this.totalSteps = 0;
+    
+    try {
+      // Step 1: Get annotated HTML from current page
+      const annotatedHTML = await this.getAnnotatedHTML();
+      
+      // Step 2: Call Agent 1 (make_instructions) via Flask server
+      const instructionsResponse = await fetch('http://127.0.0.1:5001/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: userMessage,
+          context: annotatedHTML 
+        })
+      });
+      
+      if (!instructionsResponse.ok) {
+        throw new Error('Failed to generate instructions');
+      }
+      
+      const instructionsData = await instructionsResponse.json();
+      
+      if (instructionsData.status !== 'success') {
+        throw new Error(instructionsData.message || 'Failed to generate instructions');
+      }
+      
+      // Start processing steps with Agent 2
+      await this.startStepByStepGuidance(annotatedHTML);
+      
+      return instructionsData.result;
+      
+    } catch (error) {
+      console.error('Error getting agent response:', error);
+      return `I'm having trouble processing that. Could you try again?`;
+    }
+  }
+  
+  async getAnnotatedHTML() {
+    // Content script runs on the page - we can access DOMAnnotator directly!
+    try {
+      if (typeof DOMAnnotator !== 'undefined') {
+        return DOMAnnotator.createAnnotatedHtml(document);
+      } else {
+        console.error('DOMAnnotator not available');
+        return [];
+      }
+    } catch (error) {
+      console.error('Error getting annotated HTML:', error);
+      return [];
+    }
+  }
+  
+  async startStepByStepGuidance(annotatedHTML) {
+    this.isProcessingSteps = true;
+    this.currentStepIndex = 0;
+    
+    // Process first step
+    await this.processNextStep(annotatedHTML);
+  }
+  
+  async processNextStep(annotatedHTML) {
+    if (!this.isProcessingSteps) {
+      return;
+    }
+    
+    try {
+      // Call Agent 2 (select_elements) via Flask server
+      const response = await fetch('http://127.0.0.1:5001/select-element', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          annotated_html: annotatedHTML,
+          step_index: this.currentStepIndex,
+          instructions_file: 'dedalus.json'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to select element');
+      }
+      
+      const data = await response.json();
+      
+      if (data.status !== 'success') {
+        throw new Error(data.message || 'Failed to select element');
+      }
+      
+      const result = data.result;
+      
+      // Check if all steps are completed
+      if (result.completed) {
+        this.isProcessingSteps = false;
+        await this.delay(800);
+        this.addChatMessage('Great! All steps completed! 🎉', 'bot');
+        return;
+      }
+      
+      // Store total steps
+      this.totalSteps = result.total_steps;
+      
+      // Add small delay before showing message
+      await this.delay(600);
+      
+      // Show the step text to user
+      this.addChatMessage(result.step_text, 'bot');
+      
+      // Check if this step has a selected element
+      if (result.selected_element) {
+        // There's an element to click - wait for user to click it
+        this.currentSelectedElement = result.selected_element;
+        
+        // Highlight the element on the page
+        await this.highlightElement(result.selected_element);
+        
+        // Set up click listener and timeout
+        this.setupClickListenerForElement(result.selected_element, annotatedHTML);
+      } else {
+        // No element to click - this is an informational step
+        // Automatically proceed to next step after a delay
+        await this.delay(1500);
+        this.currentStepIndex++;
+        await this.processNextStep(annotatedHTML);
+      }
+      
+    } catch (error) {
+      console.error('Error processing step:', error);
+      this.isProcessingSteps = false;
+      await this.delay(800);
+      this.addChatMessage('Sorry, I encountered an error. Please try again.', 'bot');
+    }
+  }
+  
+  setupClickListenerForElement(selectedElement, annotatedHTML) {
+    // Clear any existing timeout
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout);
+      this.clickTimeout = null;
+    }
+    
+    // Set up click listener directly on the page
+    const element = document.querySelector(`[data-id="${selectedElement.id}"]`);
+    if (!element) {
+      console.error('Selected element not found:', selectedElement.id);
+      return;
+    }
+    
+    // Set up timeout - if user doesn't click within X seconds, show reminder
+    this.clickTimeout = setTimeout(() => {
+      this.handleClickTimeout(annotatedHTML);
+    }, this.CLICK_TIMEOUT_DURATION);
+    
+    // Listen for click event directly
+    const clickHandler = (event) => {
+      if (event.target.closest(`[data-id="${selectedElement.id}"]`)) {
+        // Element was clicked!
+        clearTimeout(this.clickTimeout);
+        this.clickTimeout = null;
+        
+        // Remove this listener
+        document.removeEventListener('click', clickHandler, true);
+        
+        // Remove highlight
+        this.removeHighlight();
+        
+        // Proceed to next step
+        this.currentStepIndex++;
+        this.processNextStep(annotatedHTML);
+      }
+    };
+    
+    // Use capture phase to catch the click before page handlers
+    document.addEventListener('click', clickHandler, true);
+  }
+  
+  async handleClickTimeout(annotatedHTML) {
+    // User didn't click the element in time
+    // DON'T remove highlight - keep it active
+    
+    // Add reminder message
+    await this.delay(500);
+    this.addChatMessage("I noticed you haven't clicked yet. Take your time - the element is still highlighted.", 'bot');
+    
+    // Restart the timer - keep waiting for click
+    if (this.currentSelectedElement && this.isProcessingSteps) {
+      this.clickTimeout = setTimeout(() => {
+        this.handleClickTimeout(annotatedHTML);
+      }, this.CLICK_TIMEOUT_DURATION);
+    }
+  }
+  
+  async highlightElement(selectedElement) {
+    // Highlight element directly on the page
+    const element = document.querySelector(`[data-id="${selectedElement.id}"]`);
+    if (element) {
+      // Remove any existing highlights
+      document.querySelectorAll('.dedalus-highlight').forEach(el => {
+        el.classList.remove('dedalus-highlight');
+        el.style.outline = '';
+        el.style.backgroundColor = '';
+      });
+      
+      // Add highlight to selected element
+      element.classList.add('dedalus-highlight');
+      element.style.outline = '3px solid #ff4444';
+      element.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
+      
+      // Scroll into view
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      console.error('Element not found for highlighting:', selectedElement.id);
+    }
+  }
+  
+  removeHighlight() {
+    // Remove highlight directly from the page
+    document.querySelectorAll('.dedalus-highlight').forEach(el => {
+      el.classList.remove('dedalus-highlight');
+      el.style.outline = '';
+      el.style.backgroundColor = '';
+    });
+  }
+  
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   addChatMessage(text, sender) {

@@ -61,7 +61,7 @@ async function getAnnotatedHtml(tabId) {
 async function getAgentResponses(transcription, annotatedHtml) {
   alert(JSON.stringify({ message: transcription, context: annotatedHtml }))
 
-  const response = await fetch("http://127.0.0.1:5000/parse", {
+  const response = await fetch("http://127.0.0.1:5001/parse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: transcription, context: annotatedHtml }),
