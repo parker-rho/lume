@@ -11,23 +11,8 @@ logging.basicConfig(
     force=True
 )
 
-# Example usage
-# logging.info("Program started")
-# logging.warning("This is a warning")
-# logging.error("An error occurred")
-
 # Load environment variables from a .env file
 load_dotenv()
-
-# def read_convo(filename:str) -> list[str]:
-#     """
-#     Returns the current conversation with the user from a JSON file in the format of an array.
-#     The most recent message is at the end of the array.
-#     """
-#     with open(filename, "r") as file:
-#         data = json.load(file)
-#     logging.info("Read conversation from %s", filename)
-#     return data["convo"]
 
 def write_instructions(filename:str, instructions:str):
     """
@@ -48,16 +33,20 @@ def write_instructions(filename:str, instructions:str):
     logging.info("Wrote instructions to %s", filename)
     return
 
-async def make_instructions(prompt: str) -> str:
+async def make_instructions(prompt: str, context: list) -> str:
     client = AsyncDedalus()
     runner = DedalusRunner(client)
+
+    str_context = ", ".join(map(lambda x: json.dumps(x, ensure_ascii=False, indent=4), context))
 
     logging.info("Starting instruction generation process.")
 
     result = await runner.run(
-        input="Follow these instructions strictly and do nothing else extra: \n1. Given prompt" + prompt 
-        +  """give an answer formatted in steps for an elderly person who struggles with the internet 
-        by browsing the internet for instructions. 
+        input="""Follow these instructions strictly and do nothing else extra:
+        1. Given prompt""" + prompt + """and a webpage that has been abbreviated in the form of a JSON of only 
+        the relevant HTML elements""" + str_context + """give an answer formatted in steps that each highlight a 
+        single interactable element on the user's screen. These instructions are intended for an elderly person 
+        who struggles with the internet. Use the internet to find any additional information you need.
         2. Set these instructions as the final output and nothing else.
         3. Terminate entirely and stop all processing.""",
         model=[

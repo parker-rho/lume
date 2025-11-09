@@ -6,6 +6,7 @@ import requests
 from dotenv import load_dotenv
 from make_instructions import make_instructions
 from select_elements import process_instructions_step_by_step, process_all_steps, get_selected_elements_history
+import json
 
 # Load environment variables
 load_dotenv()
@@ -93,10 +94,12 @@ def run_instructions():
             return jsonify({"status": "error", "message": "Missing 'message' field in request body"}), 400
 
         prompt = data["message"]
+        context = data["context"]
+        print(type(context))
 
         # Run the async task synchronously
         try:
-            result = loop.run_until_complete(make_instructions(prompt))
+            result = loop.run_until_complete(make_instructions(prompt, context))
         except Exception as async_err:
             return jsonify({
                 "status": "error",
