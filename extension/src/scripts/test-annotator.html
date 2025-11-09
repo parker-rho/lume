@@ -178,14 +178,8 @@
       payloadOutput.value = payloadString;
 
       const userInstruction = userInput.value;
-      const promptText = `
-Here is a simplified list of interactive elements on the page:
-${payloadString}
-
-Based on the list above, which single element best matches the user's instruction: "${userInstruction}"?
-
-Please respond with *only* the single, complete JSON object for the matching element.`;
-      fullPrompt.value = promptText.trim();
+      const promptText = payloadString;
+      fullPrompt.value = promptText;
       highlightBtn.disabled = false;
 
       // Auto-fill the AI response for easy testing

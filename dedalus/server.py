@@ -5,6 +5,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from make_instructions import make_instructions
+from select_elements import process_instructions_step_by_step, process_all_steps, get_selected_elements_history
 
 # Load environment variables
 load_dotenv()
@@ -111,5 +112,100 @@ def run_instructions():
         return jsonify({"status": "error", "message": f"Unexpected server error: {str(e)}"}), 500
 
 
+@app.post("/select-element")
+def select_element():
+    """
+    Selects the appropriate element from annotated HTML for a specific step.
+    
+    Request body should contain:
+    {
+        "annotated_html": [...],  // Array of elements from DOMAnnotator
+        "step_index": 0,           // Which step to process (0-indexed)
+        "instructions_file": "dedalus/dedalus.json"  // Optional, defaults to dedalus.json
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+        
+        if "annotated_html" not in data:
+            return jsonify({"status": "error", "message": "Missing 'annotated_html' field"}), 400
+        
+        annotated_html = data["annotated_html"]
+        step_index = data.get("step_index", 0)
+        instructions_file = data.get("instructions_file", "dedalus.json")
+        
+        # Run the async element selection
+        result = loop.run_until_complete(
+            process_instructions_step_by_step(instructions_file, annotated_html, step_index)
+        )
+        
+        return jsonify({"status": "success", "result": result}), 200
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Unexpected error: {str(e)}"}), 500
+
+
+@app.post("/select-all-elements")
+def select_all_elements():
+    """
+    Processes ALL steps and returns elements for each one.
+    Useful for testing/previewing the full flow.
+    
+    Request body should contain:
+    {
+        "annotated_html": [...],  // Array of elements from DOMAnnotator
+        "instructions_file": "dedalus/dedalus.json"  // Optional
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+        
+        if "annotated_html" not in data:
+            return jsonify({"status": "error", "message": "Missing 'annotated_html' field"}), 400
+        
+        annotated_html = data["annotated_html"]
+        instructions_file = data.get("instructions_file", "dedalus.json")
+        
+        # Run the async processing for all steps
+        results = loop.run_until_complete(
+            process_all_steps(instructions_file, annotated_html)
+        )
+        
+        return jsonify({"status": "success", "results": results}), 200
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Unexpected error: {str(e)}"}), 500
+
+
+@app.get("/selected-elements-history")
+def get_history():
+    """
+    Retrieves the history of all selected elements.
+    
+    Query parameter:
+    - instructions_file: Path to JSON file (default: dedalus.json)
+    
+    Example: GET /selected-elements-history?instructions_file=dedalus.json
+    """
+    try:
+        instructions_file = request.args.get("instructions_file", "dedalus.json")
+        history = get_selected_elements_history(instructions_file)
+        
+        return jsonify({
+            "status": "success",
+            "count": len(history),
+            "history": history
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Unexpected error: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

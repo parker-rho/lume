@@ -33,8 +33,13 @@ def write_instructions(filename:str, instructions:str):
     """
     Writes the generated instructions to a JSON file.
     """
-    with open(filename, "r") as file:
-        data = json.load(file)
+    try:
+        with open(filename, "r") as file:
+            data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # If file doesn't exist or is empty/invalid, create new structure
+        logging.warning("File %s not found or invalid, creating new", filename)
+        data = {"message": "", "instructions": []}
 
     data.setdefault("instructions", [])
     data["instructions"].append(instructions)
