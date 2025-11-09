@@ -1,0 +1,18 @@
+{
+  "annotated_html": [
+    { "id": "ai-11", "tag": "button", "text": "Tap to ask" },
+    { "id": "ai-21", "tag": "button", "text": "Close search" },
+    { "id": "ai-24", "tag": "button", "text": "Advanced search options" },
+    { "id": "ai-25", "tag": "button", "text": "Clear search" },
+    { "id": "ai-26", "tag": "button", "text": "Search mail" },
+    { "id": "ai-28", "tag": "a", "text": "Support" },
+    { "id": "ai-29", "tag": "a", "text": "Settings" },
+    { "id": "ai-32", "tag": "a", "text": "Google Account: Sennet Senadheera" },
+    { "id": "ai-39", "tag": "div", "text": "Compose" },
+    { "id": "ai-40", "tag": "a", "text": "Inbox" },
+    { "id": "ai-61", "tag": "div", "text": "Refresh" }
+  ],
+  "step_index": 0,
+  "instructions_file": "dedalus.json"
+}
+
