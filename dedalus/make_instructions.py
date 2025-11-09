@@ -42,13 +42,24 @@ async def make_instructions(prompt: str, context: list) -> str:
     logging.info("Starting instruction generation process.")
 
     result = await runner.run(
-        input="""Follow these instructions strictly and do nothing else extra:
-        1. Given prompt""" + prompt + """and a webpage that has been abbreviated in the form of a JSON of only 
-        the relevant HTML elements""" + str_context + """give an answer formatted in steps that each highlight a 
-        single interactable element on the user's screen. These instructions are intended for an elderly person 
-        who struggles with the internet. Use the internet to find any additional information you need.
-        2. Set these instructions as the final output and nothing else.
-        3. Terminate entirely and stop all processing.""",
+        input=f"""When I mention the context, I mean the following abbreviated form of a website as a JSON of only 
+        the relevant HTML elements:
+        {str_context}
+        When I mention the prompt, I mean the following user request:
+        {prompt}
+        Now, follow these instructions strictly and do nothing else extra:
+        0. First note that as you craft your response, this is for an elderly person who struggles with the
+        internet. Make your instructions extremely clear and easy to follow.
+        1. Use the context to identify the current website. Then identify what website the prompt is talking about. 
+        If they don't match, notify the user in a single sentence that they are not on a relevant website and 
+        TERMINATE ENTIRELY. In all other cases, just continue to step 2 and completely reset the current 
+        response draft.
+        2. Use the prompt and the context to give an answer formatted in steps that only highlight a single 
+        interactable element on the user's screen. These instructions should make no reference to the context 
+        elements, and just use plain English to describe the elements. Use the internet to find any additional 
+        information you need.
+        3. Set these instructions as the final output with no preface, just begin with the steps and nothing else.
+        4. Terminate entirely and stop all processing.""",
         model=[
             "openai/gpt-4.1-mini",
             # "claude-sonnet-4-20250514",
